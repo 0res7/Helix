@@ -99,7 +99,9 @@ def _get_box_access_token() -> str:
     """Return Box access token: from BOX_ACCESS_TOKEN or by exchanging JWT."""
     if BOX_ACCESS_TOKEN:
         return BOX_ACCESS_TOKEN
-    # JWT: need enterprise ID or (for personal Box) user ID
+    # Personal Box (enterpriseID 0) requires BOX_USER_ID for JWT; enterprise 0 token is not valid
+    if BOX_ENTERPRISE_ID == "0" and not BOX_USER_ID:
+        return ""
     has_jwt = all((BOX_CLIENT_ID, BOX_CLIENT_SECRET, BOX_KEY_ID, BOX_PRIVATE_KEY))
     if has_jwt and (BOX_ENTERPRISE_ID or BOX_USER_ID):
         return _get_box_token_jwt()
@@ -109,7 +111,10 @@ def _get_box_access_token() -> str:
 def upload_to_box(file_path: Path):
     token = _get_box_access_token() if BOX_FOLDER_ID else ""
     if not token or not BOX_FOLDER_ID:
-        print("Box API upload skipped (no Box token and/or BOX_FOLDER_ID not set).")
+        if BOX_FOLDER_ID and BOX_ENTERPRISE_ID == "0" and not BOX_USER_ID:
+            print("Box API upload skipped (personal Box requires BOX_USER_ID for JWT).")
+        else:
+            print("Box API upload skipped (no Box token and/or BOX_FOLDER_ID not set).")
         return
 
     headers = {"Authorization": f"Bearer {token}"}
@@ -225,7 +230,10 @@ def fetch_sarvam_data():
         print("\nSUCCESS")
         print(f"Total records retrieved: {len(all_items)}")
         print(f"File saved as: {output_file}")
-        upload_to_box(output_file)
+        try:
+            upload_to_box(output_file)
+        except Exception as e:
+            print(f"Box upload failed (report still saved): {e}")
     else:
         print("\nNo data found for the selected time period.")
 

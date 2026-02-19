@@ -51,7 +51,10 @@ A JWT app lets the script get a new access token on every run. No short-lived to
 4. **Grant the app access to the folder**
    - The JWT app has a **Service Account** (or App User). In Box, open folder `366400499122` and add that service account (or the app user) as a **collaborator** with **Editor** (or upload) access so the script can upload files there.
 
-5. **Map config to GitHub secrets**
+5. **Personal Box (enterpriseID 0)**  
+   If your config has `"enterpriseID": "0"` (personal/developer Box), you must set **BOX_USER_ID** so the script can request a user token. Find your Box user ID: sign in at [Box](https://app.box.com) → **Account Settings** (profile/gear) → the numeric **User ID** is in the URL or on the page. Add it as the **BOX_USER_ID** secret. Without it, Box upload is skipped (the report still generates and the workflow artifact is produced).
+
+6. **Map config to GitHub secrets**
 
    From the downloaded JSON (or from the Configuration tab):
 
@@ -67,7 +70,7 @@ A JWT app lets the script get a new access token on every run. No short-lived to
    - **BOX_PRIVATE_KEY**: Paste the full private key PEM (including `-----BEGIN ... KEY-----` and `-----END ... KEY-----`). In GitHub secrets you can paste it as-is; in a shell env you may need to replace real newlines with `\n`.
    - Do **not** put **BOX_ACCESS_TOKEN** when using JWT; the script will get the token from these credentials.
 
-6. **Add BOX_FOLDER_ID**
+7. **Add BOX_FOLDER_ID**
    - **BOX_FOLDER_ID** = **`366400499122`** (same as above).
 
 After that, each run will use the JWT credentials to obtain an access token and upload to your Box folder.
