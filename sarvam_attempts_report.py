@@ -63,10 +63,11 @@ def _get_box_token_jwt() -> str:
     private_key = load_pem_private_key(key_pem, password=password)
     now = int(time.time())
     # Personal Box (enterpriseID 0): use user token. Otherwise enterprise token.
+    # Box requires sub as string; user/enterprise ID must match an existing Box entity.
     if BOX_USER_ID and (not BOX_ENTERPRISE_ID or BOX_ENTERPRISE_ID == "0"):
-        sub, box_sub_type = BOX_USER_ID, "user"
+        sub, box_sub_type = str(BOX_USER_ID).strip(), "user"
     else:
-        sub, box_sub_type = BOX_ENTERPRISE_ID, "enterprise"
+        sub, box_sub_type = str(BOX_ENTERPRISE_ID).strip(), "enterprise"
     payload = {
         "iss": BOX_CLIENT_ID,
         "sub": sub,
@@ -91,7 +92,10 @@ def _get_box_token_jwt() -> str:
         },
         timeout=REQUEST_TIMEOUT_SECONDS,
     )
-    resp.raise_for_status()
+    if not resp.ok:
+        msg = f"Box token API error ({resp.status_code}): {resp.text}"
+        print(msg)
+        raise RuntimeError(msg)
     return resp.json()["access_token"]
 
 
@@ -144,7 +148,7 @@ def upload_to_box(file_path: Path):
     if response.status_code not in (200, 201):
         raise RuntimeError(f"Box upload failed ({response.status_code}): {response.text}")
 
-    print("Uploaded report to Box via API successfully.")
+    print(f"Uploaded report to Box via API successfully. Folder ID: {BOX_FOLDER_ID} (https://app.box.com/folder/{BOX_FOLDER_ID})")
 
 
 def fetch_sarvam_data():
