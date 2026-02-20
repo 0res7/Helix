@@ -1,6 +1,6 @@
 # Turn on automation – detailed instructions
 
-Follow these steps so the Sarvam report runs **automatically every day at 08:00 AM IST** and you can download the Excel file from GitHub Actions.
+Follow these steps so the Sarvam report runs **automatically every day at 10:30 AM IST** and you can download the Excel file from GitHub Actions.
 
 ---
 
@@ -97,18 +97,66 @@ If anything fails, fix the error (usually a missing or wrong secret) and run aga
 
 1. After at least one successful manual run, stay on **Actions** → **Sarvam Attempts Report**.
 2. If you ever see a yellow banner like **“Scheduled workflows have been disabled…”**, click the link in the message and **enable** scheduled workflows.
-3. The workflow is scheduled with **cron: "30 2 * * *"** (UTC), which is **08:00 AM IST** every day. GitHub does not show “8 AM IST” in the UI; you only see runs after they start.
-4. Scheduled runs can be **up to ~15 minutes late**. So the run may show up between about 08:00 and 08:15 AM IST.
+3. The workflow is scheduled with **cron: "0 5 * * *"** (UTC), which is **10:30 AM IST** every day. GitHub does not show “10:30 AM IST” in the UI; you only see runs after they start.
+4. Scheduled runs can be **up to ~15 minutes late**. So the run may show up between about 10:30 and 10:45 AM IST.
 
 ---
 
 ## Step 8: When the scheduled run will happen
 
-- **First time:** Often the **next** calendar day at 08:00 AM IST (e.g. if you set up today, the first automatic run may be tomorrow morning).
-- **After that:** Every day at about 08:00 AM IST (02:30 UTC), as long as:
+- **First time:** Often the **next** calendar day at 10:30 AM IST (e.g. if you set up today, the first automatic run may be tomorrow morning).
+- **After that:** Every day at about 10:30 AM IST (05:00 UTC), as long as:
   - The workflow file is on the default branch.
   - There has been some repo activity in the last 60 days (e.g. a manual run or a commit).
   - Scheduled workflows are not disabled.
+
+---
+
+## Troubleshooting: Why automation doesn’t run or fails
+
+### Scheduled runs never appear
+
+- **Workflow not on default branch**  
+  Scheduled workflows run only from the **default branch** (e.g. `main`). Open **Code** → `.github/workflows/sarvam-attempts-report.yml` and confirm the file is on the default branch (branch dropdown at the top).
+
+- **Scheduled workflows disabled**  
+  GitHub can disable scheduled workflows after ~60 days of no repo activity, or if disabled in settings. In **Actions** → **Sarvam Attempts Report**, look for a yellow banner like “Scheduled workflows have been disabled…”; click the link and **enable** them. Trigger a manual run or push a commit so the repo is active.
+
+- **Schedule time**  
+  The workflow uses **cron: "0 5 * * *"** (05:00 UTC = **10:30 AM IST**). The first scheduled run is often the **next calendar day**; runs can be up to ~15 minutes late.
+
+### Workflow runs but the job fails or is stuck
+
+- **Environment “report” missing**  
+  The job uses `environment: report`. If that environment doesn’t exist (**Settings** → **Environments**), the job can fail at start. Create an environment named exactly **report**.
+
+- **Required reviewers on “report”**  
+  If the **report** environment has “Required reviewers” or a “Wait timer”, the run will sit **waiting for approval** until someone approves it. Remove required reviewers (or approve the run) so the job can proceed.
+
+- **Missing or wrong secrets**  
+  The “Generate report” step needs the **report** environment secrets: **SARVAM_ORG_ID**, **SARVAM_WORKSPACE_ID**, **SARVAM_APP_ID**, **SARVAM_API_KEY**. If any are missing or wrong, the script will fail. Check **Settings** → **Environments** → **report** → **Environment secrets**.
+
+- **Box upload 401**  
+  If the log shows “Box upload failed (401)”, remove **BOX_ACCESS_TOKEN** from the **report** environment so the workflow uses the OAuth refresh token. See [BOX_OAUTH_AUTOMATION.md](BOX_OAUTH_AUTOMATION.md#troubleshooting).
+
+### Report succeeds but Box upload fails every time
+
+- **OAuth refresh not used**  
+  In the “Generate report” step log, you should see **“Box: using access token from OAuth refresh.”** If you don’t, the script is using **BOX_ACCESS_TOKEN** (expired) or JWT. Remove **BOX_ACCESS_TOKEN** and ensure **BOX_REFRESH_TOKEN**, **BOX_CLIENT_ID**, **BOX_CLIENT_SECRET**, and **BOX_FOLDER_ID** are set in the **report** environment.
+
+- **Refresh token never updated**  
+  Each run, Box may return a new refresh token. The workflow has a “Persist new Box refresh token” step that writes it back to **BOX_REFRESH_TOKEN**. That step needs **GH_PAT** as a **repository** secret (**Settings** → **Secrets and variables** → **Actions** → **Repository secrets**), with **repo** scope. If **GH_PAT** is missing, the new token is never saved and uploads can start failing after Box rotates the token.
+
+### Quick checks
+
+| Check | Where |
+|-------|--------|
+| Workflow on default branch? | **Code** → `.github/workflows/sarvam-attempts-report.yml` → branch dropdown |
+| Scheduled workflows enabled? | **Actions** → banner / **Settings** → **Actions** → **General** |
+| Environment **report** exists? | **Settings** → **Environments** |
+| **report** has SARVAM_* and (for Box) BOX_*? | **Settings** → **Environments** → **report** |
+| **GH_PAT** set (for Box token refresh)? | **Settings** → **Secrets and variables** → **Actions** → **Repository secrets** |
+| **BOX_ACCESS_TOKEN** removed when using OAuth? | **Settings** → **Environments** → **report** → Environment secrets |
 
 ---
 
@@ -122,4 +170,4 @@ If anything fails, fix the error (usually a missing or wrong secret) and run aga
 - [ ] You downloaded the artifact and confirmed the Excel file is correct.
 - [ ] No “Scheduled workflows have been disabled” banner; if there was one, you enabled schedules.
 
-After this, automation is on: the report will run daily at 08:00 AM IST and the Excel file will be in **Actions** → latest run → **Artifacts** → **sarvam-attempts-report**.
+After this, automation is on: the report will run daily at 10:30 AM IST and the Excel file will be in **Actions** → latest run → **Artifacts** → **sarvam-attempts-report**.

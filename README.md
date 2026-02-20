@@ -7,7 +7,7 @@ Automated **Sarvam attempts** report: fetches analytics from the Sarvam API, wri
 - Calls the [Sarvam Analytics API](https://apps.sarvam.ai) to fetch attempts data.
 - Builds an Excel report named `sarvam_attempts_report_DDMonYYYY.xlsx` (e.g. `sarvam_attempts_report_19Feb2026.xlsx`).
 - Saves the file locally and/or uploads it to a Box folder (via Box API, using JWT or a developer token).
-- **GitHub Actions**: runs daily at 08:00 IST and can be triggered manually; uploads the report as an artifact and, when configured, to Box.
+- **GitHub Actions**: runs daily at 10:30 AM IST and can be triggered manually; uploads the report as an artifact and, when configured, to Box.
 
 ## Repository structure
 
@@ -49,7 +49,7 @@ Under **Environment secrets** for `report`, add:
 ### 2. Run the workflow
 
 - **Manual run**: **Actions** tab → **Sarvam Attempts Report** → **Run workflow** → **Run workflow**.
-- **Schedule**: workflow runs daily at 08:00 IST (`cron: "30 2 * * *"` UTC).
+- **Schedule**: workflow runs daily at 10:30 AM IST (`cron: "0 5 * * *"` UTC).
 
 After a run, the Excel file is in the **Artifacts** of that run (and in your Box folder if Box secrets are set).
 

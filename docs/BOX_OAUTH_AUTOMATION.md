@@ -220,7 +220,7 @@ The workflow needs a GitHub token so it can **update** the **BOX_REFRESH_TOKEN**
    Open your Box folder (e.g. `https://app.box.com/folder/366969394973`) and confirm the new Excel file is there.
 
 4. **Scheduled runs**  
-   After that, the **scheduled** run (e.g. daily at 08:00 AM IST) will:
+   After that, the **scheduled** run (e.g. daily at 10:30 AM IST) will:
    - Use the current **BOX_REFRESH_TOKEN** to get an access token.
    - Upload the report to Box.
    - Save the new refresh token back into **BOX_REFRESH_TOKEN** so the next run keeps working.
@@ -246,6 +246,11 @@ If you still get 401 after removing `BOX_ACCESS_TOKEN`:
 - Confirm the OAuth app has **Read and write all files and folders** (or at least write) scope.
 - Confirm **BOX_FOLDER_ID** is a folder where your Box user has upload permission (e.g. you are a collaborator with Editor access).
 
+### OAuth refresh fails (invalid_grant or 400)
+
+- **BOX_CLIENT_ID and BOX_CLIENT_SECRET must be from the same OAuth app** (User Authentication) that you used in the browser to get the refresh token. If you have both a JWT app and an OAuth app in Box, use the **OAuth app’s** Client ID and Secret with **BOX_REFRESH_TOKEN**, not the JWT app’s.
+- **Refresh token expired or revoked** — Do the one-time OAuth flow again (Part 2), get a new `refresh_token`, and set it as **BOX_REFRESH_TOKEN** in the **report** environment. Then ensure **GH_PAT** is set as a **repository** secret so the “Persist new Box refresh token” step can save the new token after each run.
+
 ### Redirect URL options
 
 You can use any redirect URL that Box allows and that lets you capture the `code`:
@@ -265,4 +270,4 @@ You can use any redirect URL that Box allows and that lets you capture the `code
 - [ ] GitHub **report** environment: **BOX_REFRESH_TOKEN**, **BOX_CLIENT_ID**, **BOX_CLIENT_SECRET**, **BOX_FOLDER_ID** set; **BOX_ACCESS_TOKEN** not set.
 - [ ] GitHub **repository** secret: **GH_PAT** set (PAT with **repo** scope).
 - [ ] Workflow run once manually; run succeeds and file appears in Box.
-- [ ] Schedule is enabled (see [AUTOMATION_SETUP.md](AUTOMATION_SETUP.md)); next automatic run will be at 08:00 AM IST.
+- [ ] Schedule is enabled (see [AUTOMATION_SETUP.md](AUTOMATION_SETUP.md)); next automatic run will be at 10:30 AM IST.

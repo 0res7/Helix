@@ -2,8 +2,8 @@ name: Sarvam Attempts Report
 
 on:
   schedule:
-    # 08:00 IST daily (02:30 UTC)
-    - cron: "30 2 * * *"
+    # 10:30 AM IST daily (05:00 UTC)
+    - cron: "0 5 * * *"
   workflow_dispatch:
 
 jobs:
@@ -32,6 +32,8 @@ jobs:
           OUTPUT_DIR: ./reports
           BOX_FOLDER_ID: ${{ secrets.BOX_FOLDER_ID }}
           BOX_ACCESS_TOKEN: ${{ secrets.BOX_ACCESS_TOKEN }}
+          BOX_REFRESH_TOKEN: ${{ secrets.BOX_REFRESH_TOKEN }}
+          BOX_NEW_REFRESH_TOKEN_FILE: ./reports/.box_new_refresh_token
           BOX_CLIENT_ID: ${{ secrets.BOX_CLIENT_ID }}
           BOX_CLIENT_SECRET: ${{ secrets.BOX_CLIENT_SECRET }}
           BOX_KEY_ID: ${{ secrets.BOX_KEY_ID }}
@@ -40,6 +42,16 @@ jobs:
           BOX_USER_ID: ${{ secrets.BOX_USER_ID }}
           BOX_PASSPHRASE: ${{ secrets.BOX_PASSPHRASE }}
         run: python sarvam_attempts_report.py
+
+      - name: Persist new Box refresh token
+        if: ${{ secrets.GH_PAT != '' }}
+        run: |
+          if [ -f reports/.box_new_refresh_token ]; then
+            gh secret set BOX_REFRESH_TOKEN --body "$(cat reports/.box_new_refresh_token)" --env report
+            echo "Updated BOX_REFRESH_TOKEN for next run."
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
 
       - name: Upload report artifact
         uses: actions/upload-artifact@v4
