@@ -16,7 +16,9 @@ Automated **Sarvam attempts** report: fetches analytics from the Sarvam API, wri
 ├── .github/workflows/
 │   └── sarvam-attempts-report.yml   # Scheduled + manual workflow
 ├── docs/
-│   └── BOX_SETUP.md                 # Box folder & JWT setup guide
+│   ├── AUTOMATION_SETUP.md          # Turn on automation (environment, secrets, schedule)
+│   ├── BOX_SETUP.md                 # Box folder, Developer Token, JWT, OAuth options
+│   └── BOX_OAUTH_AUTOMATION.md      # OAuth refresh token setup for scheduled Box uploads
 ├── sarvam_attempts_report.py        # Main script
 ├── requirements.txt                 # Python dependencies
 └── README.md                        # This file
@@ -40,10 +42,9 @@ Under **Environment secrets** for `report`, add:
 
 **Box (optional; for upload)**  
 - `BOX_FOLDER_ID` — folder ID from the Box folder URL (e.g. `.../folder/366969394973` → `366969394973`).  
-- Either **Developer Token**: `BOX_ACCESS_TOKEN`  
-- Or **JWT** (recommended for scheduled runs):  
-  `BOX_CLIENT_ID`, `BOX_CLIENT_SECRET`, `BOX_KEY_ID`, `BOX_PRIVATE_KEY`, `BOX_ENTERPRISE_ID`, `BOX_PASSPHRASE`  
-  For personal Box (enterpriseID `0`), you may also need `BOX_USER_ID`. See [docs/BOX_SETUP.md](docs/BOX_SETUP.md).
+- **Automated (personal Box):** OAuth refresh token — see **[docs/BOX_OAUTH_AUTOMATION.md](docs/BOX_OAUTH_AUTOMATION.md)** for detailed steps; needs `BOX_REFRESH_TOKEN`, `BOX_CLIENT_ID`, `BOX_CLIENT_SECRET` in **report** env and **GH_PAT** (repo secret). When using OAuth refresh, do **not** set `BOX_ACCESS_TOKEN` in the report environment (remove it if present).  
+- **Manual / quick test:** Developer Token — `BOX_ACCESS_TOKEN` (expires in 1 hour).  
+- **Enterprise Box:** JWT — `BOX_CLIENT_ID`, `BOX_CLIENT_SECRET`, `BOX_KEY_ID`, `BOX_PRIVATE_KEY`, `BOX_ENTERPRISE_ID`, etc. See [docs/BOX_SETUP.md](docs/BOX_SETUP.md).
 
 ### 2. Run the workflow
 
@@ -82,4 +83,6 @@ Output goes to `OUTPUT_DIR` (default: `~/Library/CloudStorage/Box-Box` on macOS)
 
 ## Docs
 
-- [Box folder and JWT setup](docs/BOX_SETUP.md) — `BOX_FOLDER_ID`, Developer Token, and JWT app configuration.
+- **[Turn on automation (detailed)](docs/AUTOMATION_SETUP.md)** — Step-by-step: environment, secrets, first run, schedule.
+- **[Box OAuth automation](docs/BOX_OAUTH_AUTOMATION.md)** — One-time OAuth setup so scheduled runs can upload to Box; includes troubleshooting (e.g. upload 401).
+- [Box folder and JWT setup](docs/BOX_SETUP.md) — `BOX_FOLDER_ID`, Developer Token, OAuth refresh, and JWT app configuration.

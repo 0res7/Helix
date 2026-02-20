@@ -2,6 +2,14 @@
 
 Use these values so the report is uploaded to your Box folder.
 
+## Personal Box (app.box.com) and JWT
+
+If you use **personal/developer Box** (enterpriseID `"0"`), Box often returns **"The 'sub' specified is invalid"** when using JWT with your account user ID. For Application Access apps, Box expects the `sub` to be an **App User** created by the app, not your personal account ID, and personal Box does not support enterprise tokens needed to create App Users.
+
+**Automated option for personal Box:** use **OAuth refresh token** (Option C below). You do a one-time OAuth in the browser to get a refresh token; the workflow then refreshes it each run and persists the new token so scheduled runs keep working.
+
+**Quick manual option:** use a **Developer Token** (Option A). It expires in 1 hour; for scheduled runs use Option C or the artifact only.
+
 ## BOX_FOLDER_ID
 
 From your folder URL:
@@ -13,25 +21,70 @@ Add this as a secret (or env var) in your GitHub **report** environment.
 
 ---
 
-## BOX_ACCESS_TOKEN (two options)
+## Troubleshooting: Box upload 401
 
-### Option A: Developer Token (quick test only)
-
-Access tokens from Box expire in **1 hour**. Fine for a one-off run; for daily scheduled runs use Option B.
-
-1. Go to [Box Developer Console](https://app.box.com/developers/console).
-2. Create an app or open an existing one:
-   - **Create new app** → **Custom App** → **User Authentication (OAuth 2.0)** or use an existing app.
-3. Open the app → **Configuration**.
-4. Under **Developer Token**, click **Generate**.
-5. Copy the token and add it as the **BOX_ACCESS_TOKEN** secret in GitHub (report environment).
-6. Ensure your Box user has access to folder `366400499122` (you do if you opened that link).
-
-For scheduled runs you would have to regenerate and update the secret often, so prefer Option B.
+If you see **"Box upload failed (401)"** in the workflow log, the script is likely using an expired **Developer Token** (`BOX_ACCESS_TOKEN`). Remove **BOX_ACCESS_TOKEN** from the **report** environment so the workflow uses the OAuth refresh token instead. See [BOX_OAUTH_AUTOMATION.md](BOX_OAUTH_AUTOMATION.md#troubleshooting) for details.
 
 ---
 
-### Option B: JWT app (recommended for scheduled runs)
+## BOX_ACCESS_TOKEN (two options)
+
+### Option A: Developer Token (works for personal Box)
+
+Access tokens from Box expire in **1 hour**. This is the option that works with **personal/developer Box** (app.box.com) when JWT returns "sub is invalid".
+
+1. Go to [Box Developer Console](https://app.box.com/developers/console).
+2. Open your app (the same JWT app is fine) → **Configuration**.
+3. Under **Developer Token**, click **Generate** and copy the token.
+4. In GitHub → **report** environment → add or update secret **BOX_ACCESS_TOKEN** with that token.
+5. Run the workflow **within about an hour** (or run it manually whenever you need the file in Box and refresh the token first).
+
+For **scheduled** daily runs on personal Box, use **Option C** (OAuth refresh) instead.
+
+---
+
+### Option C: OAuth refresh token (automated for personal Box)
+
+Use this so the **scheduled** workflow can upload to Box without touching a Developer Token every hour.
+
+**→ For full step-by-step instructions, see [BOX_OAUTH_AUTOMATION.md](BOX_OAUTH_AUTOMATION.md).**
+
+Summary:
+
+1. **Create an OAuth app in Box** (separate from any JWT app)
+   - [Box Developer Console](https://app.box.com/developers/console) → **Create new app** → **Custom App**.
+   - Choose **User Authentication (OAuth 2.0)** → **Create**.
+   - In **Configuration** → **Application Scopes**, enable **Read and write all files and folders** (or at least write).
+   - Under **Redirect URL**, add `https://app.box.com` (or use a URL you control; you’ll paste the redirect back into the browser or a script).
+   - Note the **Client ID** and **Client Secret**.
+
+2. **Get a refresh token (one-time)**
+   - Open this URL in your browser (replace `YOUR_CLIENT_ID` and `YOUR_REDIRECT_URI`):
+     ```
+     https://account.box.com/api/oauth2/authorize?response_type=code&client_id=YOUR_CLIENT_ID&redirect_uri=YOUR_REDIRECT_URI&state=helix
+     ```
+   - Sign in to Box and approve the app. You’ll be redirected to something like `https://app.box.com/?code=CODE&state=helix`. Copy the `code` from the URL.
+   - Exchange the code for tokens (replace placeholders and run in Terminal, or use Postman):
+     ```bash
+     curl -X POST "https://api.box.com/oauth2/token" \
+       -d "grant_type=authorization_code" \
+       -d "code=PASTE_CODE_HERE" \
+       -d "client_id=YOUR_CLIENT_ID" \
+       -d "client_secret=YOUR_CLIENT_SECRET" \
+       -d "redirect_uri=YOUR_REDIRECT_URI"
+     ```
+   - The response includes `refresh_token`. Copy it.
+
+3. **Add GitHub secrets**
+   - In the **report** environment: **BOX_REFRESH_TOKEN** (the refresh token), **BOX_CLIENT_ID**, **BOX_CLIENT_SECRET**, **BOX_FOLDER_ID** (your folder ID, e.g. `366969394973`). Do **not** set **BOX_ACCESS_TOKEN** when using refresh.
+   - So the workflow can update the refresh token each run, add a **repository** secret (not environment): **GH_PAT**. Create a [GitHub Personal Access Token](https://github.com/settings/tokens) with scope **repo** (or **admin:repo_hook** / fine-grained with **Secrets: Write**), and add it as **GH_PAT** under **Settings → Secrets and variables → Actions → Repository secrets**.
+
+4. **Run the workflow**  
+   The first run uses your refresh token to get an access token and upload. Box returns a new refresh token; the workflow saves it into **BOX_REFRESH_TOKEN** for the next run. Scheduled runs then keep working without you doing anything.
+
+---
+
+### Option B: JWT app (enterprise / non–personal Box)
 
 A JWT app lets the script get a new access token on every run. No short-lived token to refresh.
 
