@@ -44,7 +44,7 @@ jobs:
         run: python sarvam_attempts_report.py
 
       - name: Persist new Box refresh token
-        if: ${{ secrets.GH_PAT != '' }}
+        continue-on-error: true
         run: |
           if [ -f reports/.box_new_refresh_token ]; then
             gh secret set BOX_REFRESH_TOKEN --body "$(cat reports/.box_new_refresh_token)" --env report
