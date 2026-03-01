@@ -25,6 +25,10 @@ REQUEST_TIMEOUT_SECONDS = 60
 BOX_ACCESS_TOKEN = os.getenv("BOX_ACCESS_TOKEN", "")
 BOX_FOLDER_ID = os.getenv("BOX_FOLDER_ID", "")
 
+# Optional: OAuth refresh token credentials
+BOX_REFRESH_TOKEN = os.getenv("BOX_REFRESH_TOKEN", "")
+BOX_NEW_REFRESH_TOKEN_FILE = os.getenv("BOX_NEW_REFRESH_TOKEN_FILE", "")
+
 # Optional: JWT app credentials (from Box Developer Console config). Used to get access token each run.
 BOX_CLIENT_ID = os.getenv("BOX_CLIENT_ID", "")
 BOX_CLIENT_SECRET = os.getenv("BOX_CLIENT_SECRET", "")
@@ -99,10 +103,45 @@ def _get_box_token_jwt() -> str:
     return resp.json()["access_token"]
 
 
+def _get_box_token_oauth_refresh() -> str:
+    """Exchange refresh token for a new access and refresh token, and save the new refresh token."""
+    resp = requests.post(
+        "https://api.box.com/oauth2/token",
+        data={
+            "grant_type": "refresh_token",
+            "refresh_token": BOX_REFRESH_TOKEN,
+            "client_id": BOX_CLIENT_ID,
+            "client_secret": BOX_CLIENT_SECRET,
+        },
+        timeout=REQUEST_TIMEOUT_SECONDS,
+    )
+    if not resp.ok:
+        msg = f"Box OAuth refresh error ({resp.status_code}): {resp.text}"
+        print(msg)
+        raise RuntimeError(msg)
+
+    data = resp.json()
+    new_refresh_token = data.get("refresh_token")
+    if new_refresh_token and BOX_NEW_REFRESH_TOKEN_FILE:
+        try:
+            out_file = Path(BOX_NEW_REFRESH_TOKEN_FILE)
+            out_file.parent.mkdir(parents=True, exist_ok=True)
+            out_file.write_text(new_refresh_token)
+        except Exception as e:
+            print(f"Warning: Failed to save new refresh token: {e}")
+
+    print("Box: using access token from OAuth refresh.")
+    return data["access_token"]
+
+
 def _get_box_access_token() -> str:
-    """Return Box access token: from BOX_ACCESS_TOKEN or by exchanging JWT."""
+    """Return Box access token: from BOX_ACCESS_TOKEN, OAuth refresh, or by exchanging JWT."""
     if BOX_ACCESS_TOKEN:
         return BOX_ACCESS_TOKEN
+
+    if BOX_REFRESH_TOKEN and BOX_CLIENT_ID and BOX_CLIENT_SECRET:
+        return _get_box_token_oauth_refresh()
+
     # Personal Box (enterpriseID 0) requires BOX_USER_ID for JWT; enterprise 0 token is not valid
     if BOX_ENTERPRISE_ID == "0" and not BOX_USER_ID:
         return ""
